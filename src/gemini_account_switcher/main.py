@@ -6,12 +6,30 @@ from typing import Optional
 import datetime
 from . import utils
 
+__version__ = "1.0.0"
+
 app = typer.Typer(
     name="gemini-switch",
     help="Manage and switch between multiple Gemini CLI accounts.",
     add_completion=True,
 )
 console = Console()
+
+def version_callback(value: bool):
+    if value:
+        console.print(f"Gemini Account Switcher [bold cyan]v{__version__}[/bold cyan]")
+        raise typer.Exit()
+
+@app.callback()
+def main(
+    version: Optional[bool] = typer.Option(
+        None, "--version", "-v", help="Show the application version and exit.", callback=version_callback, is_eager=True
+    )
+):
+    """
+    Manage and switch between multiple Gemini CLI accounts.
+    """
+    pass
 
 @app.command()
 def list():

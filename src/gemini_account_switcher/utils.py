@@ -59,11 +59,13 @@ def save_credentials(email: str, creds: Dict[str, Any], alias: Optional[str] = N
     # Update alias if provided
     if alias:
         existing_meta["alias"] = alias
-        
-    creds["_meta"] = existing_meta
+    
+    # Create a copy to avoid modifying the original dictionary in memory
+    creds_to_save = creds.copy()
+    creds_to_save["_meta"] = existing_meta
 
     with open(file_path, "w") as f:
-        json.dump(creds, f, indent=2)
+        json.dump(creds_to_save, f, indent=2)
     return file_path
 
 def load_saved_credentials(email: str) -> Optional[Dict[str, Any]]:

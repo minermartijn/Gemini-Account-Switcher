@@ -6,6 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://github.com/minermartijn/Gemini-Account-Switcher/actions/workflows/test.yml/badge.svg)](https://github.com/minermartijn/Gemini-Account-Switcher/actions/workflows/test.yml)
 
 A professional, secure, and elegant CLI tool to manage multiple Gemini accounts. Designed specifically for users of the Gemini interactive CLI.
 
@@ -92,6 +93,19 @@ pip uninstall gemini-account-switcher
 If this tool saves you time and frustration, consider supporting its development!
 
 <a href="https://www.buymeacoffee.com/minermartijn" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+### Development Setup
+1.  Clone the repository.
+2.  Install dependencies: `pip install -e .`
+3.  Install development tools: `pip install pytest pre-commit`
+4.  Setup pre-commit hooks: `pre-commit install`
+5.  Run tests: `pytest`
 
 ---
 *Disclaimer: This is an unofficial tool and is not affiliated with Google.*
