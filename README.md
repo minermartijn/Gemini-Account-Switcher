@@ -71,6 +71,22 @@ The tool will automatically pick the account you haven't used in the longest tim
 
 ---
 
+## 🔄 Uninstall & Update
+
+**To Update:**
+```bash
+cd Gemini-Account-Switcher
+git pull
+pip install .
+```
+
+**To Uninstall:**
+```bash
+pip uninstall gemini-account-switcher
+```
+
+---
+
 ## ☕ Support Me
 
 If this tool saves you time and frustration, consider supporting its development!

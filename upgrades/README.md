@@ -1,1 +1,0 @@
-This directory contains markdown files describing recommended upgrades, fixes, or improvements for the Gemini Account Switcher project. Each file addresses a specific area for enhancement or correction.
