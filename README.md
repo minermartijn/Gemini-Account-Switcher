@@ -1,7 +1,4 @@
-
-![Banner](images/banner.png)
-
-# Gemini Account Switcher
+# Gemini Account Switcher 切换器
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -31,13 +28,13 @@ pip install .
 Inside the Gemini CLI, authenticate your first account:
 1.  Run `/auth` to open the login page.
 2.  Complete the login in your browser.
-3.  Run `!gemini-switch save` to store these credentials.
+3.  Run `!gemini-switch save "My Alias"` (optional alias) to store these credentials.
 
 ### 3. Adding more accounts
 Repeat the process for each Google account:
 1.  Run `/auth` again.
 2.  Log in with a **different** Google account.
-3.  Run `!gemini-switch save`.
+3.  Run `!gemini-switch save "Work Account"`.
 
 ### 4. Smart Rotation (Instant Switch)
 When you hit a quota limit or want to change identity, just run:
@@ -52,11 +49,14 @@ The tool will automatically pick the account you haven't used in the longest tim
 
 | Command | Action |
 | :--- | :--- |
-| `gemini-switch list` | View all saved accounts & their usage history. |
-| `gemini-switch save` | Save your current active login session. |
+| `gemini-switch list` | View all saved accounts, aliases & usage history. |
+| `gemini-switch save [alias]` | Save current login, optionally with a friendly name. |
 | `gemini-switch next` | **Smart Switch:** Rotates to the "freshest" account. |
 | `gemini-switch use 1` | Switch to a specific account by its number in the list. |
-| `gemini-switch use email@gmail.com` | Switch to an account by its email address. |
+| `gemini-switch use email` | Switch to an account by its email address. |
+| `gemini-switch rename 1 NewName` | Change the alias of an account. |
+| `gemini-switch whoami` | Show details of the currently active account. |
+| `gemini-switch remove 1` | Delete an account. |
 
 ---
 
@@ -67,11 +67,3 @@ The tool will automatically pick the account you haven't used in the longest tim
 
 ---
 *Disclaimer: This is an unofficial tool and is not affiliated with Google.*
-
----
-
-## ☕ Support
-
-If you find this project helpful, you can support me here:
-
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-%E2%98%95%EF%B8%8F-yellow?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/minermartijn)

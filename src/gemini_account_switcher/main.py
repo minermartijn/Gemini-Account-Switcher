@@ -34,24 +34,26 @@ def list():
     table = Table(title="Saved Gemini Accounts (Sorted by Last Used)")
     table.add_column("#", justify="right", style="cyan", no_wrap=True)
     table.add_column("Status", justify="center", style="green", no_wrap=True)
+    table.add_column("Alias", style="blue")
     table.add_column("Email", style="magenta")
     table.add_column("Last Used", style="dim")
 
-    for idx, email in enumerate(accounts, start=1):
+    for idx, (email, meta) in enumerate(accounts, start=1):
         status = "✅ Active" if email == current_email else ""
+        alias = meta.get("alias", "")
+        last_used_ts = meta.get("last_used", 0.0)
         
-        last_used_ts = utils.get_account_last_used(email)
         last_used_str = "Never"
         if last_used_ts > 0:
             dt = datetime.datetime.fromtimestamp(last_used_ts)
             last_used_str = dt.strftime("%Y-%m-%d %H:%M")
 
-        table.add_row(str(idx), status, email, last_used_str)
+        table.add_row(str(idx), status, alias, email, last_used_str)
 
     console.print(table)
 
 @app.command()
-def save(name: Optional[str] = typer.Argument(None, help="Optional alias (defaults to email address)")):
+def save(alias: Optional[str] = typer.Argument(None, help="Optional alias for the account (e.g., 'Work', 'Personal')")):
     """
     Save the currently logged-in account.
     """
@@ -70,12 +72,12 @@ def save(name: Optional[str] = typer.Argument(None, help="Optional alias (defaul
         console.print("[red]Could not extract email from identity token.[/red]")
         raise typer.Exit(code=1)
 
-    save_name = name if name else email
+    utils.save_credentials(email, creds, alias=alias)
     
-    utils.save_credentials(save_name, creds)
-    console.print(f"[green]Successfully saved credentials for[/green] [bold]{email}[/bold]")
-    if name:
-         console.print(f"Saved as: [bold]{name}[/bold]")
+    msg = f"[green]Successfully saved credentials for[/green] [bold]{email}[/bold]"
+    if alias:
+        msg += f" as alias '[bold blue]{alias}[/bold blue]'"
+    console.print(msg)
 
 @app.command()
 def use(identifier: str = typer.Argument(..., help="Email address OR the number from the list")):
@@ -89,7 +91,7 @@ def use(identifier: str = typer.Argument(..., help="Email address OR the number 
     if identifier.isdigit():
         idx = int(identifier)
         if 1 <= idx <= len(accounts):
-            email_to_use = accounts[idx - 1]
+            email_to_use = accounts[idx - 1][0] # Get email from tuple
         else:
             console.print(f"[red]Invalid number:[/red] {idx}. Must be between 1 and {len(accounts)}.")
             raise typer.Exit(code=1)
@@ -142,7 +144,7 @@ def next():
 
     # Logic: Pick the first account in the sorted list that is NOT the current one.
     target_email = None
-    for email in accounts:
+    for email, _ in accounts:
         if email != current_email:
             target_email = email
             break
@@ -153,10 +155,6 @@ def next():
 
     console.print(f"🔄 Rotating to: [bold]{target_email}[/bold]")
     
-    # Use the existing 'use' logic (we can just call the util directly to avoid redundant checks)
-    # But for safety and consistency (saving unsaved work), let's call our internal helper or reuse logic?
-    # Simpler: just load and activate since we know it exists.
-    
     target_creds = utils.load_saved_credentials(target_email)
     if target_creds:
         utils.activate_credentials(target_creds)
@@ -165,14 +163,65 @@ def next():
         console.print(f"[red]Error loading credentials for {target_email}[/red]")
 
 @app.command()
-def remove(email: str):
+def rename(identifier: str = typer.Argument(..., help="Email or number of account"), 
+           new_alias: str = typer.Argument(..., help="New alias name")):
+    """
+    Rename the alias for an existing account.
+    """
+    email_to_rename = identifier
+    accounts = utils.list_saved_accounts_sorted()
+
+    # Resolve number to email
+    if identifier.isdigit():
+        idx = int(identifier)
+        if 1 <= idx <= len(accounts):
+            email_to_rename = accounts[idx - 1][0]
+        else:
+            console.print(f"[red]Invalid number:[/red] {idx}")
+            raise typer.Exit(code=1)
+            
+    if utils.rename_alias(email_to_rename, new_alias):
+         console.print(f"[green]Updated alias for {email_to_rename} to:[/green] [bold blue]{new_alias}[/bold blue]")
+    else:
+         console.print(f"[red]Account not found:[/red] {email_to_rename}")
+
+@app.command()
+def whoami():
+    """
+    Show current active account details.
+    """
+    creds = utils.get_current_credentials()
+    if not creds or "id_token" not in creds:
+        console.print("[red]Not logged in.[/red]")
+        return
+
+    email = utils.get_email_from_token(creds["id_token"])
+    meta = utils.get_account_meta(email)
+    alias = meta.get("alias", "None")
+    
+    console.print(f"Email: [bold magenta]{email}[/bold magenta]")
+    console.print(f"Alias: [bold blue]{alias}[/bold blue]")
+
+@app.command()
+def remove(identifier: str = typer.Argument(..., help="Email or number of account")):
     """
     Remove a saved account.
     """
-    if utils.delete_saved_account(email):
-        console.print(f"[green]Removed account:[/green] {email}")
+    email_to_remove = identifier
+    accounts = utils.list_saved_accounts_sorted()
+
+    if identifier.isdigit():
+        idx = int(identifier)
+        if 1 <= idx <= len(accounts):
+            email_to_remove = accounts[idx - 1][0]
+        else:
+             console.print(f"[red]Invalid number:[/red] {idx}")
+             raise typer.Exit(code=1)
+
+    if utils.delete_saved_account(email_to_remove):
+        console.print(f"[green]Removed account:[/green] {email_to_remove}")
     else:
-        console.print(f"[red]Account not found:[/red] {email}")
+        console.print(f"[red]Account not found:[/red] {email_to_remove}")
 
 if __name__ == "__main__":
     app()

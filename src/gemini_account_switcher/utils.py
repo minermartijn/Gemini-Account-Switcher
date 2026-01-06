@@ -34,12 +34,16 @@ def get_email_from_token(token: str) -> Optional[str]:
     except Exception:
         return None
 
-def save_credentials(email: str, creds: Dict[str, Any]) -> Path:
-    """Save the credentials dictionary to a file named after the email."""
+def save_credentials(email: str, creds: Dict[str, Any], alias: Optional[str] = None) -> Path:
+    """
+    Save the credentials dictionary to a file named after the email.
+    The 'alias' is stored in the _meta field.
+    """
     ensure_dirs()
     
-    # Preserve existing metadata if the file already exists
+    # Always use the email address as the filename to ensure uniqueness
     file_path = SAVED_CREDS_DIR / f"{email}.json"
+    
     existing_meta = {}
     if file_path.exists():
         try:
@@ -51,6 +55,11 @@ def save_credentials(email: str, creds: Dict[str, Any]) -> Path:
             
     # Update timestamp
     existing_meta["last_used"] = time.time()
+    
+    # Update alias if provided
+    if alias:
+        existing_meta["alias"] = alias
+        
     creds["_meta"] = existing_meta
 
     with open(file_path, "w") as f:
@@ -68,33 +77,37 @@ def load_saved_credentials(email: str) -> Optional[Dict[str, Any]]:
     except json.JSONDecodeError:
         return None
 
-def get_account_last_used(email: str) -> float:
-    """Helper to get the last used timestamp (default to 0 if missing)."""
+def get_account_meta(email: str) -> Dict[str, Any]:
+    """Helper to get the metadata for an account."""
     creds = load_saved_credentials(email)
     if not creds:
-        return 0.0
-    return creds.get("_meta", {}).get("last_used", 0.0)
+        return {}
+    return creds.get("_meta", {})
 
-def list_saved_accounts_sorted() -> List[str]:
-    """Return a list of emails sorted by last used (oldest first)."""
+def list_saved_accounts_sorted() -> List[Tuple[str, Dict[str, Any]]]:
+    """
+    Return a list of (email, meta) tuples sorted by last used (oldest first).
+    """
     ensure_dirs()
     files = list(SAVED_CREDS_DIR.glob("*.json"))
     
     accounts = []
     for f in files:
         email = f.stem
-        last_used = get_account_last_used(email)
-        accounts.append((email, last_used))
+        # Filter out any non-email filenames if they exist from previous versions (optional cleanup)
+        # For now, we assume all .json files are accounts.
+        meta = get_account_meta(email)
+        last_used = meta.get("last_used", 0.0)
+        accounts.append((email, meta, last_used))
     
     # Sort by timestamp ascending (oldest first)
-    accounts.sort(key=lambda x: x[1])
+    accounts.sort(key=lambda x: x[2])
     
-    return [email for email, _ in accounts]
+    return [(email, meta) for email, meta, _ in accounts]
 
 def activate_credentials(creds: Dict[str, Any]):
     """Write the provided credentials to the active oauth_creds.json file."""
     # We strip out the _meta field before writing to the main oauth_creds file
-    # just in case the Gemini CLI is strict about extra fields.
     creds_to_write = creds.copy()
     if "_meta" in creds_to_write:
         del creds_to_write["_meta"]
@@ -102,14 +115,15 @@ def activate_credentials(creds: Dict[str, Any]):
     with open(CREDS_FILE, "w") as f:
         json.dump(creds_to_write, f, indent=2)
         
-    # Also update the 'last_used' timestamp in the saved file for this account
+    # Update the 'last_used' timestamp in the saved file for this account
     if "id_token" in creds:
         email = get_email_from_token(creds["id_token"])
         if email:
-            # Re-save with updated timestamp
-            # We need to reload the full saved object to preserve other data, then update time
+            # Re-save with updated timestamp, preserving existing alias
             saved = load_saved_credentials(email)
             if saved:
+                # We pass alias=None so it doesn't overwrite the existing alias,
+                # but save_credentials updates the timestamp automatically.
                 save_credentials(email, saved)
 
 
@@ -120,3 +134,12 @@ def delete_saved_account(email: str) -> bool:
         file_path.unlink()
         return True
     return False
+
+def rename_alias(email: str, new_alias: str) -> bool:
+    """Update the alias for an existing account."""
+    creds = load_saved_credentials(email)
+    if not creds:
+        return False
+    
+    save_credentials(email, creds, alias=new_alias)
+    return True
