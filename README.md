@@ -1,4 +1,8 @@
-# Gemini Account Switcher 切换器
+<div align="center">
+  <img src="images/banner.png" alt="Gemini Account Switcher Banner" width="100%">
+</div>
+
+# 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -64,6 +68,14 @@ The tool will automatically pick the account you haven't used in the longest tim
 *   **100% Local:** Your credentials stay on your machine in `~/.gemini/saved_creds/`.
 *   **Transparent:** The tool only moves JSON files; it never sends data to any server.
 *   **Reliable:** It checks if your current session is saved before letting you switch.
+
+---
+
+## ☕ Support Me
+
+If this tool saves you time and frustration, consider supporting its development!
+
+<a href="https://www.buymeacoffee.com/minermartijn" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 ---
 *Disclaimer: This is an unofficial tool and is not affiliated with Google.*
