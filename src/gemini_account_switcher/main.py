@@ -1,8 +1,11 @@
 import typer
+import subprocess
+import questionary
+from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 from rich.prompt import Confirm
-from typing import Optional
+from typing import Optional, List
 import datetime
 from . import utils
 
@@ -15,13 +18,94 @@ app = typer.Typer(
 )
 console = Console()
 
+def interactive_menu():
+    """Launch the interactive TUI menu."""
+    while True:
+        accounts = utils.list_saved_accounts_sorted()
+        
+        # Build choices
+        choices = []
+        
+        # Current account
+        current_creds = utils.get_current_credentials()
+        current_email = None
+        if current_creds and "id_token" in current_creds:
+            current_email = utils.get_email_from_token(current_creds["id_token"])
+        
+        for email, meta in accounts:
+            alias = meta.get("alias", "")
+            display = f"{email}"
+            if alias:
+                display += f" ({alias})"
+            if email == current_email:
+                display += " [Active]"
+            choices.append(questionary.Choice(display, value=email))
+            
+        choices.append(questionary.Separator())
+        choices.append(questionary.Choice("➕ Save Current Account", value="save"))
+        choices.append(questionary.Choice("🚀 Run As (Exec)", value="exec"))
+        choices.append(questionary.Choice("❌ Exit", value="exit"))
+
+        answer = questionary.select(
+            "Select an account to switch to:",
+            choices=choices,
+            use_indicator=True,
+            style=questionary.Style([
+                ('qmark', 'fg:#673ab7 bold'),       # token in front of the question
+                ('question', 'bold'),               # question text
+                ('answer', 'fg:#f44336 bold'),      # submitted answer text behind the question
+                ('pointer', 'fg:#673ab7 bold'),     # pointer used in select and checkbox prompts
+                ('highlighted', 'fg:#673ab7 bold'), # pointed-at choice in select and checkbox prompts
+                ('selected', 'fg:#cc5454'),         # style for a selected choice of a checkbox
+                ('separator', 'fg:#cc5454'),        # separator in lists
+                ('instruction', ''),                # user instructions for select, rawselect, checkbox
+                ('text', ''),                       # plain text
+                ('disabled', 'fg:#858585 italic')   # disabled choices for select and checkbox prompts
+            ])
+        ).ask()
+
+        if not answer or answer == "exit":
+            break
+            
+        if answer == "save":
+            # Prompt for alias
+            alias = questionary.text("Enter an alias (optional):").ask()
+            # Call save logic manually
+            # We can't easily call the CLI command wrapper, so we call util directly
+            creds = utils.get_current_credentials()
+            if creds and "id_token" in creds:
+                email = utils.get_email_from_token(creds["id_token"])
+                if email:
+                    utils.save_credentials(email, creds, alias=alias)
+                    console.print(f"[green]Saved {email}[/green]")
+                else:
+                    console.print("[red]Error: Could not extract email[/red]")
+            else:
+                console.print("[red]No active credentials to save[/red]")
+            input("Press Enter to continue...")
+            continue
+            
+        if answer == "exec":
+            console.print("[yellow]Use the CLI command for this: gemini-switch exec <account> -- <command>[/yellow]")
+            input("Press Enter to continue...")
+            continue
+
+        # Switch to account
+        target_creds = utils.load_saved_credentials(answer)
+        if target_creds:
+            utils.activate_credentials(target_creds)
+            console.print(f"[green]Switched to {answer}[/green]")
+            # We exit after switching? Or stay? Usually users want to switch and work.
+            break
+
 def version_callback(value: bool):
     if value:
         console.print(f"Gemini Account Switcher [bold cyan]v{__version__}[/bold cyan]")
         raise typer.Exit()
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main(
+    ctx: typer.Context,
     version: Optional[bool] = typer.Option(
         None, "--version", "-v", help="Show the application version and exit.", callback=version_callback, is_eager=True
     )
@@ -29,7 +113,9 @@ def main(
     """
     Manage and switch between multiple Gemini CLI accounts.
     """
-    pass
+    # If no command is invoked, run the interactive menu
+    if ctx.invoked_subcommand is None:
+        interactive_menu()
 
 @app.command()
 def list():
@@ -240,6 +326,57 @@ def remove(identifier: str = typer.Argument(..., help="Email or number of accoun
         console.print(f"[green]Removed account:[/green] {email_to_remove}")
     else:
         console.print(f"[red]Account not found:[/red] {email_to_remove}")
+
+@app.command("exec")
+def exec_command(
+    identifier: str = typer.Argument(..., help="Email or number of account to run as"),
+    cmd: List[str] = typer.Argument(..., help="The command to run")
+):
+    """
+    Run a command as a specific user without permanently switching.
+    Example: gemini-switch exec Work -- gemini prompt "Hello"
+    """
+    email_to_use = identifier
+    accounts = utils.list_saved_accounts_sorted()
+
+    if identifier.isdigit():
+        idx = int(identifier)
+        if 1 <= idx <= len(accounts):
+            email_to_use = accounts[idx - 1][0]
+        else:
+            console.print(f"[red]Invalid number:[/red] {idx}")
+            raise typer.Exit(code=1)
+
+    try:
+        with utils.temporary_switch(email_to_use):
+            console.print(f"[dim]Running as {email_to_use}...[/dim]")
+            subprocess.run(cmd)
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+    except Exception as e:
+        console.print(f"[red]Error running command: {e}[/red]")
+
+@app.command()
+def export(output: Path = typer.Argument(..., help="Path to save the zip file")):
+    """
+    Export all saved accounts to a zip file.
+    """
+    try:
+        zip_path = utils.create_backup(output)
+        console.print(f"[green]Successfully exported accounts to:[/green] {zip_path}")
+    except Exception as e:
+        console.print(f"[red]Export failed: {e}[/red]")
+
+@app.command("import")
+def import_backup(input_file: Path = typer.Argument(..., help="Path to the zip file to import")):
+    """
+    Import accounts from a zip file.
+    """
+    try:
+        utils.restore_backup(input_file)
+        console.print(f"[green]Successfully imported accounts from:[/green] {input_file}")
+    except Exception as e:
+        console.print(f"[red]Import failed: {e}[/red]")
 
 if __name__ == "__main__":
     app()

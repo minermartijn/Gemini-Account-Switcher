@@ -4,6 +4,7 @@ import jwt
 import time
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
+from contextlib import contextmanager
 
 # Constants
 GEMINI_DIR = Path.home() / ".gemini"
@@ -145,3 +146,49 @@ def rename_alias(email: str, new_alias: str) -> bool:
     
     save_credentials(email, creds, alias=new_alias)
     return True
+
+@contextmanager
+def temporary_switch(email: str):
+    """
+    Context manager to temporarily switch to an account and switch back on exit.
+    Usage:
+        with temporary_switch("user@example.com"):
+            subprocess.run(...)
+    """
+    original_creds = get_current_credentials()
+    target_creds = load_saved_credentials(email)
+    
+    if not target_creds:
+        raise ValueError(f"Account {email} not found.")
+
+    try:
+        # Switch to target
+        activate_credentials(target_creds)
+        yield
+    finally:
+        # Switch back to original, if it existed
+        if original_creds:
+            activate_credentials(original_creds)
+        else:
+            # If there were no creds before, remove the current ones? 
+            # Safer to leave the last used one or delete file.
+            # Here we choose to delete to restore "no login" state.
+            if CREDS_FILE.exists():
+                CREDS_FILE.unlink()
+
+def create_backup(zip_path: Path):
+    """Create a zip backup of the saved credentials directory."""
+    ensure_dirs()
+    if zip_path.suffix != ".zip":
+        zip_path = zip_path.with_suffix(".zip")
+    
+    shutil.make_archive(str(zip_path.with_suffix("")), 'zip', SAVED_CREDS_DIR)
+    return zip_path
+
+def restore_backup(zip_path: Path):
+    """Restore credentials from a zip backup."""
+    ensure_dirs()
+    if not zip_path.exists():
+        raise FileNotFoundError(f"Backup file not found: {zip_path}")
+        
+    shutil.unpack_archive(str(zip_path), SAVED_CREDS_DIR)

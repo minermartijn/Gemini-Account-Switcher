@@ -1,5 +1,6 @@
 import json
 import pytest
+import shutil
 from pathlib import Path
 from gemini_account_switcher import utils
 
@@ -90,3 +91,34 @@ def test_delete_saved_account(mock_gemini_env):
     assert not (utils.SAVED_CREDS_DIR / f"{email}.json").exists()
     
     assert utils.delete_saved_account("nonexistent") is False
+
+def test_temporary_switch(mock_gemini_env):
+    # Setup
+    utils.save_credentials("temp@test.com", {"token": "temp"})
+    utils.activate_credentials({"token": "original"})
+    
+    # Run Context
+    with utils.temporary_switch("temp@test.com"):
+        current = utils.get_current_credentials()
+        assert current["token"] == "temp"
+        
+    # Verify Return
+    current = utils.get_current_credentials()
+    assert current["token"] == "original"
+
+def test_backup_restore(mock_gemini_env):
+    # Create some data
+    utils.save_credentials("backup@test.com", {"foo": "bar"})
+    zip_path = mock_gemini_env / "mybackup"
+    
+    # Export
+    output = utils.create_backup(zip_path)
+    assert output.exists()
+    assert output.suffix == ".zip"
+    
+    # Nuke dir
+    shutil.rmtree(utils.SAVED_CREDS_DIR)
+    
+    # Restore
+    utils.restore_backup(output)
+    assert (utils.SAVED_CREDS_DIR / "backup@test.com.json").exists()

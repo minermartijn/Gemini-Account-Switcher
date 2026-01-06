@@ -20,6 +20,7 @@ dependencies = [
     "typer[all]",
     "rich",
     "pyjwt",
+    "questionary",
 ]
 requires-python = ">=3.8"
 
