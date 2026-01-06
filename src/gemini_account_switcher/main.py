@@ -9,7 +9,7 @@ from typing import Optional, List
 import datetime
 from . import utils
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 app = typer.Typer(
     name="gemini-switch",
