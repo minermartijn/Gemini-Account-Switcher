@@ -1,8 +1,9 @@
 import json
 import shutil
 import jwt
+import time
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 
 # Constants
 GEMINI_DIR = Path.home() / ".gemini"
@@ -36,7 +37,22 @@ def get_email_from_token(token: str) -> Optional[str]:
 def save_credentials(email: str, creds: Dict[str, Any]) -> Path:
     """Save the credentials dictionary to a file named after the email."""
     ensure_dirs()
+    
+    # Preserve existing metadata if the file already exists
     file_path = SAVED_CREDS_DIR / f"{email}.json"
+    existing_meta = {}
+    if file_path.exists():
+        try:
+            with open(file_path, "r") as f:
+                data = json.load(f)
+                existing_meta = data.get("_meta", {})
+        except json.JSONDecodeError:
+            pass
+            
+    # Update timestamp
+    existing_meta["last_used"] = time.time()
+    creds["_meta"] = existing_meta
+
     with open(file_path, "w") as f:
         json.dump(creds, f, indent=2)
     return file_path
@@ -52,16 +68,50 @@ def load_saved_credentials(email: str) -> Optional[Dict[str, Any]]:
     except json.JSONDecodeError:
         return None
 
-def list_saved_accounts() -> List[str]:
-    """Return a list of emails for which we have saved credentials."""
+def get_account_last_used(email: str) -> float:
+    """Helper to get the last used timestamp (default to 0 if missing)."""
+    creds = load_saved_credentials(email)
+    if not creds:
+        return 0.0
+    return creds.get("_meta", {}).get("last_used", 0.0)
+
+def list_saved_accounts_sorted() -> List[str]:
+    """Return a list of emails sorted by last used (oldest first)."""
     ensure_dirs()
-    files = SAVED_CREDS_DIR.glob("*.json")
-    return [f.stem for f in files]
+    files = list(SAVED_CREDS_DIR.glob("*.json"))
+    
+    accounts = []
+    for f in files:
+        email = f.stem
+        last_used = get_account_last_used(email)
+        accounts.append((email, last_used))
+    
+    # Sort by timestamp ascending (oldest first)
+    accounts.sort(key=lambda x: x[1])
+    
+    return [email for email, _ in accounts]
 
 def activate_credentials(creds: Dict[str, Any]):
     """Write the provided credentials to the active oauth_creds.json file."""
+    # We strip out the _meta field before writing to the main oauth_creds file
+    # just in case the Gemini CLI is strict about extra fields.
+    creds_to_write = creds.copy()
+    if "_meta" in creds_to_write:
+        del creds_to_write["_meta"]
+
     with open(CREDS_FILE, "w") as f:
-        json.dump(creds, f, indent=2)
+        json.dump(creds_to_write, f, indent=2)
+        
+    # Also update the 'last_used' timestamp in the saved file for this account
+    if "id_token" in creds:
+        email = get_email_from_token(creds["id_token"])
+        if email:
+            # Re-save with updated timestamp
+            # We need to reload the full saved object to preserve other data, then update time
+            saved = load_saved_credentials(email)
+            if saved:
+                save_credentials(email, saved)
+
 
 def delete_saved_account(email: str) -> bool:
     """Delete the saved credential file for an email."""

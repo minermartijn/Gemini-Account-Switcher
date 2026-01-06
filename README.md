@@ -14,8 +14,8 @@ If you work with multiple Google accounts (e.g., Personal, Work, Freelance) and 
 **Gemini Account Switcher** solves this by securely storing your session tokens locally and allowing you to swap them with a single command.
 
 *   **Secure:** Credentials never leave your machine. They are stored in `~/.gemini/saved_creds/`.
-*   **Safe:** Checks if your current session is saved before switching, preventing accidental data loss.
-*   **Simple:** Easy-to-remember commands: `save`, `list`, `use`.
+*   **Smart Rotation:** Automatically switch to the "freshest" account (the one used longest ago) with `gemini-switch next`.
+*   **Simple:** Easy-to-remember commands: `save`, `list`, `use`, `next`.
 *   **Beautiful:** Rich terminal output.
 
 ## 📦 Installation
@@ -51,25 +51,37 @@ Successfully saved credentials for other.work@company.com
 ```
 
 ### 3. List accounts
-See all your saved sessions:
+See all your saved sessions. They are automatically **sorted by last used**, so the accounts you haven't touched in a while are at the top (ready for rotation).
 
 ```bash
 $ gemini-switch list
-Saved Gemini Accounts
-┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Status   ┃ Email                    ┃
-┡━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ ✅ Active │ other.work@company.com   │
-│          │ your.email@gmail.com     │
-└──────────┴──────────────────────────┘
+Saved Gemini Accounts (Sorted by Last Used)
+┏━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
+┃ # ┃ Status    ┃ Email                    ┃ Last Used        ┃
+┡━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
+│ 1 │           │ other.work@company.com   │ 2024-01-05 10:00 │
+│ 2 │ ✅ Active  │ your.email@gmail.com     │ 2024-01-06 09:30 │
+└───┴───────────┴──────────────────────────┴──────────────────┘
 ```
 
 ### 4. Switch instantly
-Swap back to your personal account:
+You can switch by email or by list number:
 
 ```bash
+# By email
 $ gemini-switch use your.email@gmail.com
-Successfully switched to: your.email@gmail.com
+
+# By list number (e.g., switch to account #1)
+$ gemini-switch use 1
+```
+
+### 5. Smart Rotation (LRU)
+Hit a quota limit? Just run `next` to instantly swap to the account that has been "resting" the longest:
+
+```bash
+$ gemini-switch next
+🔄 Rotating to: other.work@company.com
+Successfully rotated to: other.work@company.com
 ```
 
 ## 🔒 Security
