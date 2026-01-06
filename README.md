@@ -23,8 +23,8 @@ If you work with multiple Google accounts (e.g., Personal, Work, Freelance) and 
 You can install this directly from source (recommended for now):
 
 ```bash
-git clone https://github.com/minermartijn/gemini-account-switcher.git
-cd gemini-account-switcher
+git clone https://github.com/minermartijn/Gemini-Account-Switcher.git
+cd Gemini-Account-Switcher
 pip install .
 ```
 

@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "A secure CLI tool to manage and switch between multiple Gemini accounts easily."
 readme = "README.md"
 authors = [
-  { name = "Your Name", email = "your.email@example.com" },
+  { name = "minermartijn", email = "minermartijn@gmail.com" },
 ]
 license = { file = "LICENSE" }
 classifiers = [
@@ -27,5 +27,5 @@ requires-python = ">=3.8"
 gemini-switch = "gemini_account_switcher.main:app"
 
 [project.urls]
-"Homepage" = "https://github.com/minermartijn/gemini-account-switcher"
-"Bug Tracker" = "https://github.com/minermartijn/gemini-account-switcher/issues"
+"Homepage" = "https://github.com/minermartijn/Gemini-Account-Switcher"
+"Bug Tracker" = "https://github.com/minermartijn/Gemini-Account-Switcher/issues"
