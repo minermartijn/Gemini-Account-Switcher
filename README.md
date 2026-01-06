@@ -67,3 +67,11 @@ The tool will automatically pick the account you haven't used in the longest tim
 
 ---
 *Disclaimer: This is an unofficial tool and is not affiliated with Google.*
+
+---
+
+## ☕ Support
+
+If you find this project helpful, you can support me here:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-%E2%98%95%EF%B8%8F-yellow?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/minermartijn)
