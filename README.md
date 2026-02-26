@@ -7,8 +7,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://github.com/minermartijn/Gemini-Account-Switcher/actions/workflows/test.yml/badge.svg)](https://github.com/minermartijn/Gemini-Account-Switcher/actions/workflows/test.yml)
+[![Gemini CLI](https://img.shields.io/badge/Gemini%20CLI-v0.30%2B-4285F4?logo=google)](https://github.com/google-gemini/gemini-cli)
 
 A professional, secure, and elegant CLI tool to manage multiple Gemini accounts. Designed specifically for users of the Gemini interactive CLI.
+
+> **✅ Compatible with Gemini CLI v0.30+** — fully supports the encrypted token storage (`mcp-oauth-tokens-v2.json`) introduced in v0.30. Switching accounts now correctly updates all credential files that the Gemini CLI reads.
 
 ---
 
@@ -28,6 +31,8 @@ git clone https://github.com/minermartijn/Gemini-Account-Switcher.git
 cd Gemini-Account-Switcher
 pip install .
 ```
+
+> **Requirements:** Python 3.8+ and the [`cryptography`](https://pypi.org/project/cryptography/) package (installed automatically).
 
 ### 2. Interactive Mode (New!)
 Simply run the command without arguments to launch the menu:
@@ -80,7 +85,8 @@ gemini-switch import my_accounts.zip
 
 ## 🔒 Security & Privacy
 *   **100% Local:** Your credentials stay on your machine in `~/.gemini/saved_creds/`.
-*   **Transparent:** The tool only moves JSON files; it never sends data to any server.
+*   **Encrypted writes:** When activating an account, credentials are written to Gemini CLI's own AES-256-GCM encrypted token file (`~/.gemini/mcp-oauth-tokens-v2.json`) using the same key-derivation scheme as the CLI itself.
+*   **Transparent:** The tool never sends data to any server.
 *   **Reliable:** It checks if your current session is saved before letting you switch.
 
 ---
@@ -91,7 +97,7 @@ gemini-switch import my_accounts.zip
 ```bash
 cd Gemini-Account-Switcher
 git pull
-pip install .
+pip install . --upgrade
 ```
 
 **To Uninstall:**
@@ -115,6 +121,15 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 3.  Install development tools: `pip install pytest pre-commit`
 4.  Setup pre-commit hooks: `pre-commit install`
 5.  Run tests: `pytest`
+
+### Gemini CLI Compatibility Notes
+This tool writes credentials to **three** locations on account switch, matching what Gemini CLI v0.30+ expects:
+
+| File | Purpose |
+| :--- | :--- |
+| `~/.gemini/mcp-oauth-tokens-v2.json` | AES-256-GCM encrypted token file (primary, v0.30+) |
+| `~/.gemini/oauth_creds.json` | Legacy plain-text credentials (older versions) |
+| `~/.gemini/google_accounts.json` | Active account email tracker |
 
 ---
 *Disclaimer: This is an unofficial tool and is not affiliated with Google.*

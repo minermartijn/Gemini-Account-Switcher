@@ -9,7 +9,7 @@ from typing import Optional, List
 import datetime
 from . import utils
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 app = typer.Typer(
     name="gemini-switch",
@@ -27,10 +27,7 @@ def interactive_menu():
         choices = []
         
         # Current account
-        current_creds = utils.get_current_credentials()
-        current_email = None
-        if current_creds and "id_token" in current_creds:
-            current_email = utils.get_email_from_token(current_creds["id_token"])
+        current_email = utils.get_current_email()
         
         for email, meta in accounts:
             alias = meta.get("alias", "")
@@ -70,18 +67,13 @@ def interactive_menu():
         if answer == "save":
             # Prompt for alias
             alias = questionary.text("Enter an alias (optional):").ask()
-            # Call save logic manually
-            # We can't easily call the CLI command wrapper, so we call util directly
             creds = utils.get_current_credentials()
-            if creds and "id_token" in creds:
-                email = utils.get_email_from_token(creds["id_token"])
-                if email:
-                    utils.save_credentials(email, creds, alias=alias)
-                    console.print(f"[green]Saved {email}[/green]")
-                else:
-                    console.print("[red]Error: Could not extract email[/red]")
+            email = utils.get_current_email()
+            if creds and email:
+                utils.save_credentials(email, creds, alias=alias)
+                console.print(f"[green]Saved {email}[/green]")
             else:
-                console.print("[red]No active credentials to save[/red]")
+                console.print("[red]No active credentials found. Please login first.[/red]")
             input("Press Enter to continue...")
             continue
             
@@ -93,9 +85,8 @@ def interactive_menu():
         # Switch to account
         target_creds = utils.load_saved_credentials(answer)
         if target_creds:
-            utils.activate_credentials(target_creds)
+            utils.activate_credentials(target_creds, email=answer)
             console.print(f"[green]Switched to {answer}[/green]")
-            # We exit after switching? Or stay? Usually users want to switch and work.
             break
 
 def version_callback(value: bool):
@@ -125,10 +116,7 @@ def list():
     accounts = utils.list_saved_accounts_sorted()
     
     # Identify current active account
-    current_creds = utils.get_current_credentials()
-    current_email = None
-    if current_creds and "id_token" in current_creds:
-        current_email = utils.get_email_from_token(current_creds["id_token"])
+    current_email = utils.get_current_email()
 
     if not accounts:
         console.print("[yellow]No saved accounts found.[/yellow]")
@@ -162,18 +150,16 @@ def save(alias: Optional[str] = typer.Argument(None, help="Optional alias for th
     Save the currently logged-in account.
     """
     creds = utils.get_current_credentials()
+    email = utils.get_current_email()
+
     if not creds:
         console.print("[red]No active Gemini credentials found.[/red]")
-        console.print("Please login with the Gemini CLI first: [bold]gemini login[/bold]")
+        console.print("Please login with the Gemini CLI first: [bold]gemini[/bold]")
         raise typer.Exit(code=1)
 
-    if "id_token" not in creds:
-        console.print("[red]Invalid credentials format: missing id_token.[/red]")
-        raise typer.Exit(code=1)
-
-    email = utils.get_email_from_token(creds["id_token"])
     if not email:
-        console.print("[red]Could not extract email from identity token.[/red]")
+        console.print("[red]Could not determine current account email.[/red]")
+        console.print("Make sure you are logged in via the Gemini CLI.")
         raise typer.Exit(code=1)
 
     utils.save_credentials(email, creds, alias=alias)
@@ -208,26 +194,25 @@ def use(identifier: str = typer.Argument(..., help="Email address OR the number 
         raise typer.Exit(code=1)
 
     # 2. Check current account state
-    current_creds = utils.get_current_credentials()
-    if current_creds:
-        current_email = utils.get_email_from_token(current_creds.get("id_token", ""))
-        
-        # If current is same as target, do nothing
-        if current_email == email_to_use:
-            console.print(f"[yellow]Already logged in as {email_to_use}[/yellow]")
-            return
+    current_email = utils.get_current_email()
 
-        # If current account is NOT saved, warn user
-        if current_email:
-            saved_current = utils.load_saved_credentials(current_email)
-            if not saved_current:
-                console.print(f"[bold red]Warning:[/bold red] You are currently logged in as [bold]{current_email}[/bold], but this account is NOT saved.")
-                if Confirm.ask("Do you want to save it before switching?"):
-                    utils.save_credentials(current_email, current_creds)
-                    console.print(f"[green]Saved {current_email}[/green]")
-    
+    # If current is same as target, do nothing
+    if current_email == email_to_use:
+        console.print(f"[yellow]Already logged in as {email_to_use}[/yellow]")
+        return
+
+    # If current account is NOT saved, warn user
+    if current_email:
+        saved_current = utils.load_saved_credentials(current_email)
+        if not saved_current:
+            console.print(f"[bold red]Warning:[/bold red] You are currently logged in as [bold]{current_email}[/bold], but this account is NOT saved.")
+            current_creds = utils.get_current_credentials()
+            if current_creds and Confirm.ask("Do you want to save it before switching?"):
+                utils.save_credentials(current_email, current_creds)
+                console.print(f"[green]Saved {current_email}[/green]")
+
     # 3. Perform switch
-    utils.activate_credentials(target_creds)
+    utils.activate_credentials(target_creds, email=email_to_use)
     console.print(f"[green]Successfully switched to:[/green] [bold]{email_to_use}[/bold]")
 
 @app.command()
@@ -241,10 +226,7 @@ def next():
         return
 
     # Get current email
-    current_creds = utils.get_current_credentials()
-    current_email = None
-    if current_creds:
-        current_email = utils.get_email_from_token(current_creds.get("id_token", ""))
+    current_email = utils.get_current_email()
 
     # Logic: Pick the first account in the sorted list that is NOT the current one.
     target_email = None
@@ -261,7 +243,7 @@ def next():
     
     target_creds = utils.load_saved_credentials(target_email)
     if target_creds:
-        utils.activate_credentials(target_creds)
+        utils.activate_credentials(target_creds, email=target_email)
         console.print(f"[green]Successfully rotated to:[/green] [bold]{target_email}[/bold]")
     else:
         console.print(f"[red]Error loading credentials for {target_email}[/red]")
@@ -294,15 +276,14 @@ def whoami():
     """
     Show current active account details.
     """
-    creds = utils.get_current_credentials()
-    if not creds or "id_token" not in creds:
+    email = utils.get_current_email()
+    if not email:
         console.print("[red]Not logged in.[/red]")
         return
 
-    email = utils.get_email_from_token(creds["id_token"])
     meta = utils.get_account_meta(email)
     alias = meta.get("alias", "None")
-    
+
     console.print(f"Email: [bold magenta]{email}[/bold magenta]")
     console.print(f"Alias: [bold blue]{alias}[/bold blue]")
 

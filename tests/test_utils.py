@@ -18,12 +18,16 @@ def mock_gemini_env(tmp_path, monkeypatch):
     saved_creds_dir.mkdir()
     
     creds_file = gemini_dir / "oauth_creds.json"
-    
+    token_file = gemini_dir / "mcp-oauth-tokens-v2.json"
+    accounts_file = gemini_dir / "google_accounts.json"
+
     # Monkeypatch the constants in utils
     monkeypatch.setattr(utils, "GEMINI_DIR", gemini_dir)
     monkeypatch.setattr(utils, "CREDS_FILE", creds_file)
+    monkeypatch.setattr(utils, "TOKEN_FILE", token_file)
+    monkeypatch.setattr(utils, "GOOGLE_ACCOUNTS_FILE", accounts_file)
     monkeypatch.setattr(utils, "SAVED_CREDS_DIR", saved_creds_dir)
-    
+
     return gemini_dir
 
 def test_save_credentials(mock_gemini_env):
@@ -93,18 +97,22 @@ def test_delete_saved_account(mock_gemini_env):
     assert utils.delete_saved_account("nonexistent") is False
 
 def test_temporary_switch(mock_gemini_env):
-    # Setup
-    utils.save_credentials("temp@test.com", {"token": "temp"})
-    utils.activate_credentials({"token": "original"})
-    
+    # Use realistic credentials so the encrypted token file check works correctly.
+    # activate_credentials only writes to the encrypted file when access_token is present.
+    temp_creds = {"access_token": "tok_temp", "refresh_token": "ref_temp"}
+    original_creds = {"access_token": "tok_original", "refresh_token": "ref_original"}
+
+    utils.save_credentials("temp@test.com", temp_creds)
+    utils.activate_credentials(original_creds)
+
     # Run Context
     with utils.temporary_switch("temp@test.com"):
         current = utils.get_current_credentials()
-        assert current["token"] == "temp"
-        
+        assert current["access_token"] == "tok_temp"
+
     # Verify Return
     current = utils.get_current_credentials()
-    assert current["token"] == "original"
+    assert current["access_token"] == "tok_original"
 
 def test_backup_restore(mock_gemini_env):
     # Create some data
